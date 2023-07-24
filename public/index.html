@@ -1,0 +1,144 @@
+<html>
+  <head>
+    <title>Express</title>
+    <link rel="stylesheet" href="/stylesheets/style.css" />
+  </head>
+
+  <body>
+    <button onclick="getAbout()">About</button>
+    <button onclick="getSongs()">Show All Songs</button>
+    <section>
+      <div style="display: flex; flex-direction: row; align-items: center">
+        <h1>Cari Lagu</h1>
+        <input id="search" />
+        <button onclick="searchBtnHandler()">Search</button>
+        <button onclick="createBtnHandler()">Create</button>
+      </div>
+      <ul id="playlist"></ul>
+    </section>
+    <section>
+      <h1>Song Detail</h1>
+      <div id="song-detail">
+        <input id="title" />
+        <input id="artist" />
+        <input id="url" />
+        <button disabled id="save-btn">Save</button>
+      </div>
+    </section>
+
+    <script>
+      // Function About
+      const getAbout = async () => {
+        const aboutResponse = await fetch(`/about`);
+        const aboutMessage = await aboutResponse.text();
+        alert(aboutMessage);
+      };
+
+      // Function getSongs
+      const getSongs = async (title = null) => {
+        document.getElementById("playlist").innerHTML = "Loading...";
+        let url = `/playlist`;
+        if (title) {
+          url += `?title=${title}`;
+        }
+        const playlistResponse = await fetch(url);
+        const playlist = await playlistResponse.json();
+        const playlistElements = playlist.map((playlist) => {
+          return `<li>${playlist.title} - ${playlist.artist[0].name} <button onclick="getSongDetail(${playlist.id})">Detail</button><button onclick="deleteSong(${playlist.id})">Delete</button></li>`;
+        });
+        document.getElementById("playlist").innerHTML =
+          playlistElements.join("");
+      };
+
+      // Function Search Button
+      const searchBtnHandler = () => {
+        const searchValue = document.getElementById("search").value;
+        getSongs(searchValue);
+      };
+
+      // Function Delete Song
+      const deleteSong = async (id) => {
+        const songDeleteResponse = await fetch(`/playlist/${id}`, {
+          method: "DELETE",
+        });
+        const deletedSong = await songDeleteResponse.json();
+        alert(`Songs : Title =  ${deletedSong.title} deleted`);
+        getSongs();
+        document.getElementById("song-detail").innerHTML = "";
+      };
+
+      const getSongDetail = async (id) => {
+        const songDetailElement = document.getElementById("song-detail");
+
+        const songDetailResponse = await fetch(`/song/${id}`);
+        const songDetail = await songDetailResponse.json();
+        document.getElementById("title").value = songDetail.title;
+        document.getElementById("artist").value = songDetail.artist[0].name;
+        document.getElementById("url").value = songDetail.url;
+        document.getElementById("save-btn").remove();
+        document
+          .getElementById("song-detail")
+          .insertAdjacentHTML(
+            "beforeend",
+            `<button id="save-btn" onclick="editSong(${songDetail.id})">Save</button>`
+          );
+      };
+
+      const editSong = async (id) => {
+        const title = document.getElementById("title")?.value;
+        const artistName = document.getElementById("artist")?.value;
+        const songResponse = await fetch(`/song/${id}`, {
+          headers: new Headers({
+            "content-type": "application/json",
+          }),
+          method: "PUT",
+          body: JSON.stringify({
+            title,
+            artist: [{ name: artistName }],
+          }),
+        });
+        const song = await songResponse.json();
+        getSongDetail(song.id);
+        getSongs();
+        alert(
+          `Editted Song: Judul Lagu "${song.title}" ; Artist : "${song.artist[0].name}"`
+        );
+      };
+
+      const createBtnHandler = () => {
+        document.getElementById("title").value = "";
+        document.getElementById("artist").value = "";
+        document.getElementById("url").value = "";
+        document.getElementById("save-btn").remove();
+        document
+          .getElementById("song-detail")
+          .insertAdjacentHTML(
+            "beforeend",
+            `<button id="save-btn" onclick="addSong()">Add</button>`
+          );
+      };
+
+      const addSong = async () => {
+        const title = document.getElementById("title")?.value;
+        const artistName = document.getElementById("artist")?.value;
+        const url = document.getElementById("url")?.value;
+        const songResponse = await fetch(`/song`, {
+          headers: new Headers({
+            "content-type": "application/json",
+          }),
+          method: "POST",
+          body: JSON.stringify({
+            title,
+            url,
+            artist: [{ name: artistName }],
+          }),
+        });
+        const song = await songResponse.json();
+        alert(`Songs : Title =  ${title} Created`);
+        getSongs();
+      };
+
+      getSongs();
+    </script>
+  </body>
+</html>
